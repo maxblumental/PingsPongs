@@ -1,26 +1,48 @@
 package com.blumental.pingspongs;
 
+import org.openjdk.jmh.annotations.*;
+
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+@State(Scope.Benchmark)
 public class ReentrantLockPingPong {
 
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition condition = lock.newCondition();
+    @Param({"2", "4", "8", "16", "32", "64", "128", "256"})
+    private int threadNumber;
     private int state = 1;
 
     public static void main(String[] args) {
         ReentrantLockPingPong pingPong = new ReentrantLockPingPong();
-        pingPong.run();
-    }
 
-    private void run() {
         int N, M;
         try (Scanner scanner = new Scanner(System.in)) {
             N = scanner.nextInt();
             M = scanner.nextInt();
         }
+
+        pingPong.run(N, M);
+    }
+
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    @Warmup(iterations = 5)
+    @Fork(1)
+    @Benchmark
+    public void measureReentrantLock() {
+        run(threadNumber, 1000);
+    }
+
+    @Setup(Level.Invocation)
+    public void setUp() {
+        state = 1;
+    }
+
+    private void run(int N, int M) {
 
         Thread[] threads = new Thread[N];
 

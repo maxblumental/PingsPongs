@@ -1,22 +1,44 @@
 package com.blumental.pingspongs;
 
-import java.util.Scanner;
+import org.openjdk.jmh.annotations.*;
 
+import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
+
+@State(Scope.Benchmark)
 public class VolatilePingPong {
 
+    @Param({"2", "4", "8", "16", "32", "64", "128", "256"})
+    private int threadNumber;
     private volatile ImmutableWrapper state = new ImmutableWrapper();
 
     public static void main(String[] args) {
         VolatilePingPong pingPong = new VolatilePingPong();
-        pingPong.run();
-    }
 
-    private void run() {
         int N, M;
         try (Scanner scanner = new Scanner(System.in)) {
             N = scanner.nextInt();
             M = scanner.nextInt();
         }
+
+        pingPong.run(N, M);
+    }
+
+    @Setup(Level.Invocation)
+    public void setUp() {
+        state = new ImmutableWrapper();
+    }
+
+    @Benchmark
+    @BenchmarkMode({Mode.AverageTime})
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    @Warmup(iterations = 5)
+    @Fork(1)
+    public void measureVolatile() {
+        run(threadNumber, 1000);
+    }
+
+    private void run(int N, int M) {
 
         Thread[] threads = new Thread[N];
 
