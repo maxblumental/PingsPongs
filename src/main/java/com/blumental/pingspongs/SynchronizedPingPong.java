@@ -15,13 +15,13 @@ public class SynchronizedPingPong {
     public static void main(String[] args) {
         SynchronizedPingPong pingPong = new SynchronizedPingPong();
 
-        int N, M;
+        int statesNumber, transitionsNumber;
         try (Scanner scanner = new Scanner(System.in)) {
-            N = scanner.nextInt();
-            M = scanner.nextInt();
+            statesNumber = scanner.nextInt();
+            transitionsNumber = scanner.nextInt();
         }
 
-        pingPong.run(N, M);
+        pingPong.run(statesNumber, transitionsNumber);
     }
 
     @BenchmarkMode(Mode.AverageTime)
@@ -38,12 +38,12 @@ public class SynchronizedPingPong {
         state = 1;
     }
 
-    private void run(int N, int M) {
+    private void run(int statesNumber, int transitionsNumber) {
 
-        Thread[] threads = new Thread[N];
+        Thread[] threads = new Thread[statesNumber];
 
         for (int i = 0; i < threads.length; i++) {
-            threads[i] = createThread(i + 1, N, M);
+            threads[i] = createThread(i + 1, statesNumber, transitionsNumber);
         }
 
         for (Thread thread : threads) {
@@ -60,37 +60,37 @@ public class SynchronizedPingPong {
         System.out.printf("Final state: %d\n", state);
     }
 
-    private Thread createThread(int n, int N, int M) {
+    private Thread createThread(int threadState, int statesNumber, int transitionsNumber) {
         return new Thread(() -> {
-            int iterationsNumber = getIterationsNumber(n, N, M);
-            int i = 0;
-            while (i < iterationsNumber) {
+            int iterationsNumber = getIterationsNumber(threadState, statesNumber, transitionsNumber);
+            for (int i = 0; i < iterationsNumber; i++) {
                 synchronized (SynchronizedPingPong.this) {
-                    if (state == getPreviousIndex(n, N)) {
-                        state = state < N ? state + 1 : 1;
-                        i++;
-                        SynchronizedPingPong.this.notifyAll();
-                    } else {
+                    if (state != getPreviousState(threadState, statesNumber)) {
                         try {
-                            SynchronizedPingPong.this.wait();
+                            while (state != getPreviousState(threadState, statesNumber)) {
+                                SynchronizedPingPong.this.wait();
+                            }
                         } catch (InterruptedException e) {
                             System.err.println("Exception during wait()");
                         }
                     }
+                    state = state < statesNumber ? state + 1 : 1;
+                    SynchronizedPingPong.this.notifyAll();
                 }
             }
         });
     }
 
-    private int getPreviousIndex(int n, int N) {
-        return n > 1 ? n - 1 : N;
+    private int getPreviousState(int threadState, int transitionsNumber) {
+        return threadState > 1 ? threadState - 1 : transitionsNumber;
     }
 
-    private int getIterationsNumber(int n, int N, int M) {
-        int k = ++M / N, r = M - k * N;
-        int iterationsNumber = k;
-        if (r >= n) iterationsNumber++;
-        if (n == 1) iterationsNumber--;
+    private int getIterationsNumber(int threadState, int statesNumber, int transitionsNumber) {
+        int cyclesNumber = ++transitionsNumber / statesNumber,
+                remainder = transitionsNumber - cyclesNumber * statesNumber;
+        int iterationsNumber = cyclesNumber;
+        if (remainder >= threadState) iterationsNumber++;
+        if (threadState == 1) iterationsNumber--;
         return iterationsNumber;
     }
 }
